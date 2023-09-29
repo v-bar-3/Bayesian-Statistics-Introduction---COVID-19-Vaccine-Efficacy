@@ -1,0 +1,220 @@
+---
+title: "Bayesian Statistics Introduction - COVID-19 Vaccine Efficacy"
+params:
+  term: Winter 2023
+  duedate: '2023-03-08'
+  name: Vincent Barletta
+  email: barlettavincent@gmail.com
+  total_points: XX
+  grade: NA
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+Consider the report:  [A PHASE 1/2/3, PLACEBO-CONTROLLED, RANDOMIZED, OBSERVER-BLIND, DOSE-FINDING STUDY TO EVALUATE THE SAFETY, TOLERABILITY, IMMUNOGENICITY, AND EFFICACY OF SARS-COV-2 RNA VACCINE CANDIDATES AGAINST COVID-19 IN HEALTHY INDIVIDUALS (pages 99-101)].
+
+Let $\theta$ be the probability that a subject who fell ill with Covid-19 is from the treatment group and $1-\theta$  the probability that the subject is from the control group. Assuming that 94 subjects fell ill to Covid-19 (with a sample efficacy above 90%) and at most 8 of those 94 subjects were vaccinated. Write a report (Introduction, Methods, Results and Conclusions) assuming:
+
+## Introduction
+
+In [A PHASE 1/2/3, PLACEBO-CONTROLLED, RANDOMIZED, OBSERVER-BLIND, DOSE-FINDING STUDY TO EVALUATE THE SAFETY, TOLERABILITY, IMMUNOGENICITY, AND EFFICACY OF SARS-COV-2 RNA VACCINE CANDIDATES AGAINST COVID-19 IN HEALTHY INDIVIDUALS], an experiment by the Pfizer Corporation, researchers aim to find the effectiveness of their SARS-COV-2 RNA vaccine against COVID-19. To do so, they use Bayesian statistics to estimate the probability that a subject who fell ill with COVID-19 is vaccinated or not.
+
+As a newcomer to the field of Bayesian Statistics, I feel the need to define some key terms.
+
+A **posterior probability** is the probability of assigning observations to groups given the data. 
+A **prior probability** is the probability that an observation will fall into a group before you collect the data.
+
+The central variable that we are trying to measure is VE, vaccine efficacy. According to Page 99 of the 
+Pfizer report, VE is initially defined as VE = 100 × (1 – IRR). IRR is calculated as the ratio of first confirmed COVID-19 illness rate in the vaccine group to the corresponding illness rate in the placebo group. 
+This can be expressed equivalently with variables set for  the two population probabilities of infection.
+
+Let πv and πc be the population probabilities that a vaccinated subject or a subject in the control group, respectively, fall ill to Covid-19. Then the population vaccine efficacy is given by VE=1−πv*πc.
+
+In Phase 2/3, the assessment of VE will be based on posterior probabilities of VE1 > 30% and VE2 > 30%.
+VE1 represents VE for prophylactic BNT162b2 against confirmed COVID-19 in participants
+without evidence of infection before vaccination, and VE2 represents VE for prophylactic
+BNT162b2 against confirmed COVID-19 in all participants after vaccination.
+
+
+The criteria for success at an interim analysis is based on these posterior probabilities. Overwhelming efficacy will be declared if the posterior probability is higher than the success threshold. 
+
+Using the above formulas, we can rewrite θ using VE's equivalencies as θ = πvπc+πc.
+
+## Methods
+
+Let $\theta$ be the probability that a subject who fell ill with Covid-19 is from the treatment group and $1-\theta$  the probability that the subject is from the control group. Assuming that 94 subjects fell ill to Covid-19 (with a sample efficacy above 90%) and at most 8 of those 94 subjects were vaccinated.
+
+Bayesian approaches require specification of a prior distribution for the possible values of the unknown vaccine effect, thereby accounting for uncertainty in its value. In the study, a minimally informative beta prior, beta(0.700102, 1), is proposed for θ=(1−VE)/(2−VE). We will begin by exploring what a Beta prior distribution looks like for sample values of a and b.
+
+
+### a. A Beta prior for $\theta$: $p(\theta)$=Beta$($a=0.5,b=0.5$)$, where $a$ and $b$ are the shape parameters of the Beta distribution. Plot the prior, likelihood and posterior as function of $\theta$.
+
+```{r, echo=FALSE, include=FALSE}
+install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+library(tidyverse)
+install.packages("extraDistr", repos = "http://cran.us.r-project.org")
+library(extraDistr)
+install.packages("LearnBayes", repos = "http://cran.us.r-project.org")
+library(LearnBayes)
+
+```
+
+For this example, we will use the provided formula, $$E(\theta)=a_{0}/(a_{0}+b_{0})$$, to find the prior mean,  E(theta). Simply put, our prior mean is 0.5. This is a non-informative prior, and often referred to as Jeffrey's Prior.
+
+
+```{r}
+a0 = 0.5; b0 = 0.5
+ggplot(data = data.frame(x = c(0, 1)), aes(x)) +
+  stat_function(geom="area",fun = dbeta, n = 101,
+    args = list(shape1 = a0, shape2 = b0),
+    col="red", fill="red", alpha=0.5
+  ) +
+  ylab("Prior Distribution") + xlab(expression(theta)) + geom_vline(xintercept=0.5) +
+  ggtitle("Prior on probability that a subject with Covid-19 was vaccinated")                       
+```
+
+For a Beta prior distribution with a = 0.5 and b = 0.5, we receive a symmetrical graph with E(θ) directly in the middle. 
+
+Now, we will look at the likelihood. This likelihood plot shows us that with the provided sample numbers from the experiment what we would expect the "likely" posterior distribution to resemble with the properly fitted Beta distribution. 
+
+```{r}
+# likelihood
+y = 8  # vaccinated subjects fall ill to Covid-19 
+n = 94 # subjects, sample size
+theta = seq(0, 1, len=1000)
+
+plot(theta, dbeta(theta, a0, a0), type="l", xlab=expression(theta),
+     ylab=expression(p(theta)), ylim=c(0,15), lty=1, col=1)
+lines(theta, dbeta(theta, y+1, n-y+1), type = "l", col = 2, lty = 2)
+```
+
+Now, we will look at two posterior distributions for a scenario that a single person gets ill. The two cases are if the person that gets sick is vaccinated, or that the infected is not vaccinated.
+
+Case 1: Posterior if single ill is in control group
+
+```{r}
+y = 0
+n = 1
+a1 = 0.5 + y 
+b1 = 0.5 + n - y
+theta = a1 / (a1 + b1)
+
+ggplot(data = data.frame(x = c(0, 1)), aes(x)) +
+  stat_function(geom="area",fun = dbeta, n = 101,
+    args = list(shape1 = a1, shape2 = b1),
+    col="red", fill="red", alpha=0.5
+  ) +
+  ylab("Posterior Distribution") + xlab(expression(theta)) + geom_vline(xintercept=theta) +
+  ggtitle("Posterior on probability that a subject with Covid-19 was not vaccinated")    
+
+```
+
+Case 2: Posterior if single ill was vaccinated
+
+```{r}
+y = 1
+n = 1
+a2 = 0.5 + y 
+b2 = 0.5 + n - y
+theta = a2 / (a2 + b2)
+ggplot(data = data.frame(x = c(0, 1)), aes(x)) +
+  stat_function(geom="area",fun = dbeta, n = 101,
+    args = list(shape1 = a2, shape2 = b2),
+    col="red", fill="red", alpha=0.5
+  ) +
+  ylab("Posterior Distribution") + xlab(expression(theta)) + geom_vline(xintercept=theta) +
+  ggtitle("Posterior on probability that the subject with Covid-19 was vaccinated")    
+```
+
+Here, we can see that if we have only one subject and they are vaccinated, the probability of a person being vaccinated and getting COVID-19 becomes much higher. This is a good exercise to see how greatly posterior distributions can increase based on the prior information.
+
+Now, let's run the posterior distributions in the case of the experiment, where we have 94 subjects and only 8 of them are in the vaccinated group.
+
+```{r}
+y = 8  # vaccinated subjects fall ill to Covid-19 
+n = 94 # subjects, sample size
+a3 = 0.5 + y 
+b3 = 0.5 + n - y
+theta = a3 / (a3 + b3)
+
+ggplot(data = data.frame(x = c(0, 1)), aes(x)) +
+  stat_function(geom="area",fun = dbeta, n = 101,
+    args = list(shape1 = a3, shape2 = b3),
+    col="red", fill="red", alpha=0.5
+  ) +
+  ylab("Posterior Distribution") + xlab(expression(theta)) + geom_vline(xintercept=theta) +
+  ggtitle("Posterior on probability that a subject with Covid-19 was not vaccinated")    
+
+```
+
+In this case, whilst using a = 0.5 and b = 0.5, we receive a theta value of 0.08947, which is lower than the initially produced efficacy from Pfizer's study. If we were to use their prior VE numbers, we would receive a figure more similar to theirs.
+
+
+### b. Compute the posterior probability of having a value of $\theta>0.4118$.
+ Our next objective is to create a posterior probability distribution using some of the research-backed numbers.
+ 
+ A minimally informative beta prior, beta(0.700102, 1), is proposed for θ=(1−VE)/(2−VE). The prior is centered at θ = 0.4118 (VE=30%) which can be considered pessimistic. We want to see the what the posterior probability is of having a value for theta higher than the previously proposed θ = 0.4118.
+ 
+We will use our previous posterior beta values.
+ 
+```{r}
+1-pbeta(0.4118, shape1 = a3, shape2 = b3)
+```
+ Here, we can see that there is an incredibly low chance that we receive a theta value more than the conservative estimate of 0.4118 using non-informative priors a= 0.5 and b = 0.5. This is in line with our expectations, as Biontech/Pfizer stated as interim success criterion that the posterior probability of an efficacy below 30% (corresponding to $\theta>0.4118$) is smaller than 2.5%.
+
+### c. Compute a 95\%  credible and confidence intervals.
+ 
+```{r}
+alpha = 1-0.95
+L.confidence = qbeta(alpha/2, y+1, n-y+1)
+U.confidence = qbeta(1-alpha/2, y+1, n-y+1)
+L.credible = qbeta(alpha/2, a3, b3)
+U.credible = qbeta(1-alpha/2, a3, b3)
+
+L.confidence = round(L.confidence*100,1)
+U.confidence = round(U.confidence*100,1)
+L.credible = round(L.credible*100,1)
+U.credible = round(U.credible*100,1)
+
+
+confidence <- c(L.confidence, U.confidence)
+credible <- c(L.credible, U.credible)
+
+confidence
+credible
+```
+ Our 95% confidence interval is from 4.4-15.9% and our 95% credible interval is from 4.1-15.4%. 
+ 
+This means that we can say with 95% probability the probability that an ill subject is vaccinated is between the ranges of 4.1%-15.4%. This is very close in resemblance to the results gained during Lecture 16, which utilized Pfizer prior VE values.
+
+This means that using Jeffrey priors is very close in approximation to known/previously calculated priors.
+
+
+### d.  Plot the posterior empirical predictive density. If a new sample of 94 subjects with Covid-19 is taken, how many subjects were vaccinated?.
+
+```{r}
+m = 94
+y_m = rbbinom(10000, m, a3, b3)
+plot(table(y_m)/10000, xlab = '', ylab = 'Posterior Predictive')
+
+mean_predictive = m*a3/(a3 + b3)
+mean_predictive
+```
+If a new sample of 94 subjects with Covid-19, we expect an average of ~8.4105 people to be vaccinated. 
+
+## Results
+
+The purpose of this exercise is to reenact Pfizer's experiment using Jeffrey Priors (a = 0.5, b= 0.5) instead of their calculated theta value using their estimated VE's and see if the results yield any difference in results.
+
+After adding our sample results to our prior distribution, our posterior distribution yields a E(θ) = 0.08947, or that the expected probability of a subject with COVID being vaccinated is 8.9%. 
+
+The posterior probability that we receive a θ > 0.4118, the initially proposed θ value for a conservative 30% vaccine efficacy rate, is (5.82645 * 10^11)%. As this number is incredibly low, the vaccine efficacy rate is clearly much higher than 30%. This is further reflected by our very low θ value.
+
+Applying confidence and credibility intervals yields 95% credibility that the probability that an ill subject is vaccinated is between the ranges of 4.1%-15.4%, which is very similar to the interval found during lecture.
+
+## Conclusion
+Ultimately, using our final posterior distribution in order to predict what would we happen with a new sample of 94 COVID-19 patients, we expect an average of ~8.4105 people to be vaccinated.
+
+This is very consistent with the actual experiment. I am somewhat surprised to see the number increase in value rather than decrease, as our data seemed to suggest a very low level of infection for vaccinated individuals. However, when we consider that our posterior Theta = 8.9%, this infection rate is very close.
